@@ -1,0 +1,36 @@
+[project]
+name = "sports-betting-qa"
+version = "1.0.0"
+description = "Test automation for the Sports Betting QA take-home assignment"
+requires-python = ">=3.10"
+dependencies = [
+    "pytest>=8.0,<10",
+    "requests>=2.31,<3",
+    "selenium>=4.20,<5",
+]
+
+[project.optional-dependencies]
+dev = ["ruff>=0.6"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"
+markers = [
+    "api: tests that call the REST API directly (no browser)",
+    "ui: end-to-end tests driving Chrome through Selenium",
+]
+log_level = "INFO"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "PT", "ARG", "RUF"]
+# "×" is used deliberately in payout messages (stake × odds).
+ignore = ["RUF001", "RUF002"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["betting_qa"]
