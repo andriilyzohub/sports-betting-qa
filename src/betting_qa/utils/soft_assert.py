@@ -3,6 +3,16 @@
 An end-to-end journey verifies many values (receipt fields, balances). Stopping at the first
 mismatch hides the others and costs a rerun per defect, so each check is recorded and all
 failures are raised at the end in one readable message.
+
+Usage::
+
+    soft = SoftAssertions()
+    soft.equal(actual, expected, "what is compared")
+    soft.check(condition, "message if it fails")
+    soft.assert_all()  # required: without it, failures are never reported
+
+It also works as a context manager (``with SoftAssertions() as soft:``), which calls
+``assert_all()`` automatically on exit.
 """
 
 from __future__ import annotations

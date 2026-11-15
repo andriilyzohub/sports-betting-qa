@@ -11,7 +11,15 @@ from selenium.webdriver.support import expected_conditions as ec
 from betting_qa.config import Settings
 from betting_qa.domain import parse_money
 from betting_qa.ui.base_view import BaseView, Locator
-from betting_qa.ui.components import BetSlip, ErrorModal, MatchList, ReceiptDetails, SuccessReceipt
+from betting_qa.ui.components import (
+    BetSlip,
+    DateFilter,
+    ErrorModal,
+    MatchList,
+    OddsFilter,
+    ReceiptDetails,
+    SuccessReceipt,
+)
 
 
 class PlacementFailedError(AssertionError):
@@ -29,6 +37,8 @@ class BettingPage(BaseView):
         super().__init__(driver, settings.ui_timeout)
         self._settings = settings
         self.match_list = MatchList(driver, settings.ui_timeout)
+        self.date_filter = DateFilter(driver, settings.ui_timeout)
+        self.odds_filter = OddsFilter(driver, settings.ui_timeout)
         self.bet_slip = BetSlip(driver, settings.ui_timeout)
         self.receipt = SuccessReceipt(driver, settings.ui_timeout)
         self.error_modal = ErrorModal(driver, settings.ui_timeout)

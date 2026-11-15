@@ -8,30 +8,40 @@ check by hand), and **automation stability** (deterministic data, stable locator
 
 | Candidate | Risk | Frequency | Manual cost | Stability | Decision |
 |-----------|------|-----------|-------------|-----------|----------|
-| **E2E: place a bet; slip, receipt and balance consistent** | Critical | Every bet | High (7+ values in 4 places) | High (stable `id` locators, data taken from API) | **Automated (UI)** |
-| **API: stake limits enforced, rejected bet never charges** | Critical | Every request | Medium (many boundary cases) | Very high (no browser, deterministic) | **Automated (API)** |
-| API: stake > balance rejected | Critical | Common | Low | High (needs a balance setup step) | Next candidate |
-| API: past match rejected | Critical | Rare | Low | Medium (depends on date vs catalogue) | Next candidate |
+| **E2E: one betting session (browse, filter, cancel, place, overspend)** | Critical | Every bet | High (many values in 4 places, multi-step) | High (stable `id` locators, data taken from API) | **Automated (UI)** |
+| **API: placement guards (stake limits, balance, past match); rejected bet never charges** | Critical | Every request | Medium (many boundary cases) | Very high (no browser; one setup bet for the balance case) | **Automated (API)** |
+| API: same-day match after kickoff rejected | Critical | Daily | Low | Low (the API has no kickoff time yet, BUG-18) | After the contract change |
 | Error modal / Rebet | High | Rare | High | Low (needs a fault-injection hook) | Manual for now |
 | Odds / date filters | Medium | Common | Low | Medium | Component-level later |
 
-**E2E UI test: `test_single_bet_receipt_and_balance_match_bet_slip`**
+**E2E UI test: `test_betting_session_browse_filter_cancel_place_and_overspend`**
 
-- It covers the single most important user journey, and every component of the feature on the way.
-- Its oracle is the spec's own consistency rule: *receipt values = values shown before placement*. It also
-  checks that the balance moved exactly once, in the UI and in the backend.
-- That oracle is what silently regressed in this build. One run of the test reports four separate defects
-  (BUG-03, BUG-04, BUG-05, BUG-06), because the receipt checks use soft assertions.
-- Expected values come from the live catalogue and the payout rule, not hard-coded numbers. The test
-  deliberately avoids odds of exactly 2.00, where `stake × odds` and `stake × 2` would coincide and hide a
-  payout bug.
+- It follows one realistic customer session without reloads: browse the list, filter by date and odds, clear
+  the slip with Remove All, place a bet, then try to bet again with the remaining funds. It covers the most
+  important journey and every component of the feature on the way.
+- Its oracles come from the spec: only pre-match events are bettable; filters show exactly the matching
+  events (inclusive ranges); Remove All charges nothing; *receipt values = values shown before placement*; the
+  balance moves exactly once, in the UI and the backend; a stake above the balance is blocked.
+- The overspend step is the UI path to the critical BUG-02: because the UI keeps a stale balance (BUG-04) and
+  the API has no balance check, two ordinary bets drive the balance negative. One run reports every defect
+  on the way (BUG-02/04, 03, 05, 06, 07, 15), because outcome checks use soft assertions.
+- Hard asserts guard only the preconditions (the intended bet is in the slip, the target match is visible
+  after filtering), so a wrong selection never produces misleading receipt failures.
+- Expected values come from the live catalogue and the payout rule, not hard-coded numbers. The test avoids
+  odds of exactly 2.00 (where `stake × odds` and `stake × 2` coincide) and picks an odds-filter minimum that
+  doesn't equal any of the target's own odds (BUG-14 would hide the target for an unrelated reason).
 
-**API test: `test_place_bet_rejects_invalid_stake_without_charging`** (7 boundary/invalid cases)
+**API test: `test_place_bet_rejects_invalid_bet_without_charging`** (9 cases)
 
-- The UI input mask hides stake rule violations, so only the API can prove the rules hold. Any client
-  (scripts, mobile, partners) bypasses the UI.
-- A failure here is directly exploitable: the negative-stake case (BUG-01) lets anyone mint money.
-- Each case checks status, the contract's error code **and** that the persisted balance didn't change.
+- Business rule: *a bet that breaks a placement rule is rejected, and a rejected bet never moves money.*
+  The cases cover stake limits, precision and type (7), stake above the available balance, and a bet on a
+  past match.
+- The API is the real enforcement point. The UI masks the stake input and works from a balance that can be
+  stale (BUG-04), and any client (scripts, mobile, partners) can bypass the UI.
+- It catches all three critical defects reachable through the API: a negative stake credits the balance
+  (BUG-01), a stake above the balance drives it negative (BUG-02), and past matches are accepted (BUG-07).
+- Each case checks status, the contract's error code (where one is defined) **and** that the persisted
+  balance didn't change.
 - It's the cheapest high-value check: no browser, about a second per case, safe to run on every commit.
 
 Both tests reset the account via the API and read the **persisted** balance as their baseline, instead of

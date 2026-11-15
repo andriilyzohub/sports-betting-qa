@@ -19,4 +19,6 @@ def create_chrome_driver(
     width, height = window_size
     options.add_argument(f"--window-size={width},{height}")
     options.add_argument("--disable-search-engine-choice-screen")
+    # Fixed UI language: the app formats dates and month names with the browser locale.
+    options.add_argument("--lang=en-GB")
     return webdriver.Chrome(options=options)

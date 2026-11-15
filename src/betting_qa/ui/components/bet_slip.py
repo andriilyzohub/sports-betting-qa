@@ -20,6 +20,8 @@ class BetSlip(BaseView):
     TOTAL_STAKE: Locator = (By.ID, "bet-slip-total-stake")
     POTENTIAL_PAYOUT: Locator = (By.ID, "bet-slip-potential-payout")
     PLACE_BET_BUTTON: Locator = (By.ID, "bet-slip-place-bet")
+    REMOVE_ALL_BUTTON: Locator = (By.ID, "bet-slip-remove-all")
+    STAKE_WARNING: Locator = (By.CSS_SELECTOR, "#bet-slip .stakeWarning")
 
     @property
     def selection_count(self) -> int:
@@ -45,10 +47,21 @@ class BetSlip(BaseView):
     def potential_payout(self) -> Decimal:
         return parse_money(self.text_of(self.POTENTIAL_PAYOUT))
 
+    @property
+    def warning(self) -> str:
+        """Validation message under the stake ("Insufficient balance", ...), or "" if none."""
+        elements = self.driver.find_elements(*self.STAKE_WARNING)
+        return elements[0].text.strip() if elements else ""
+
     def enter_stake(self, stake: str) -> None:
-        field = self.find_visible(self.STAKE_INPUT)
-        field.clear()
-        field.send_keys(stake)
+        self.type_into(self.STAKE_INPUT, stake)
+
+    def is_place_bet_enabled(self) -> bool:
+        return self.find_visible(self.PLACE_BET_BUTTON).is_enabled()
+
+    def remove_all(self) -> None:
+        self.click(self.REMOVE_ALL_BUTTON)
+        self.find_visible(self.EMPTY_STATE)
 
     def submit(self) -> None:
         self.click(self.PLACE_BET_BUTTON)

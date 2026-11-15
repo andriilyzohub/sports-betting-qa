@@ -380,11 +380,18 @@ and the API must agree.
 **Business impact:** An inconsistent API contract. Monitoring and caches may treat the endpoint as healthy and readable.
 **Evidence:** `GET /api/place-bet` → `200 {}`, while `GET /api/reset-balance` → `405 {"error":"method_not_allowed"}` and `PUT /api/matches` → `405`.
 
-### BUG-14: Odds filter lower bound is exclusive
+### BUG-14: Odds filter hides every match that has any odds equal to the minimum
 
-**Severity:** Low. **Steps:** Odds 7.20–7.50 → Apply. **Expected:** It includes Bayern vs Stuttgart (away 7.20) and PSG vs Marseille (away 7.50). **Actual:** Only PSG vs Marseille is shown. With 1.35–1.35 nothing is shown. The upper bound is inclusive and the lower bound is exclusive.
-**Business impact:** Some markets are hidden from users who filter by exact odds.
-**Evidence:** Range 1.35–1.45 shows only the two matches with 1.45 and omits PSG vs Marseille (home 1.35). Range 1.30–1.40 includes it.
+**Severity:** Low. **Steps:** Odds 7.20–7.50 → Apply. Then 1.35–1.45. **Expected:** Inclusive range (spec §2.6):
+Bayern vs Stuttgart (away 7.20) and PSG vs Marseille (away 7.50) are both shown. For 1.35–1.45, PSG vs Marseille
+(home 1.35) is shown. **Actual:** Only PSG vs Marseille is shown for 7.20–7.50, and it's missing for 1.35–1.45.
+With 1.35–1.35 nothing is shown. The upper bound is inclusive. At the lower bound, the filter doesn't just exclude
+the value: it hides the **whole match** when **any** of its three odds equals the minimum, even if another of its
+odds is inside the range.
+**Business impact:** Matches disappear from a filter they match, which hides markets from users filtering by odds.
+**Evidence:** The filter condition in the app bundle:
+`!odds.some(o => Math.abs(o - min) < Number.EPSILON) && odds.some(o => o > min && o <= max)`. Range 1.30–1.40
+includes PSG vs Marseille, so the match itself isn't the problem.
 
 ### BUG-15: "Showing N matches" counter ignores filters
 

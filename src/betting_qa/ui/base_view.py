@@ -5,17 +5,20 @@ All interactions go through explicit waits; there are no ``time.sleep`` calls in
 
 from __future__ import annotations
 
+import sys
 from collections.abc import Callable
 from contextlib import suppress
 from typing import TypeVar
 
 from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support import expected_conditions as ec
 from selenium.webdriver.support.ui import WebDriverWait
 
 Locator = tuple[str, str]
+SELECT_ALL_MODIFIER = Keys.COMMAND if sys.platform == "darwin" else Keys.CONTROL
 T = TypeVar("T")
 
 
@@ -39,6 +42,14 @@ class BaseView:
         self._wait().until(
             ec.element_to_be_clickable(locator), message=f"Element {locator} not clickable"
         ).click()
+
+    def type_into(self, locator: Locator, text: str) -> None:
+        """Replace a field's value the way a user does (select all, then type), so that
+        JavaScript frameworks receive real input events."""
+        field = self.find_visible(locator)
+        field.click()
+        field.send_keys(SELECT_ALL_MODIFIER, "a")
+        field.send_keys(text)
 
     def text_of(self, locator: Locator) -> str:
         return self.find_visible(locator).text.strip()

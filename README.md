@@ -35,12 +35,12 @@ No Poetry or Allure, to keep setup to one `pip install`.
 │   ├── ui/
 │   │   ├── driver_factory.py    # Chrome creation and options in one place
 │   │   ├── base_view.py         # explicit-wait helpers shared by pages and components
-│   │   ├── components/          # MatchList, BetSlip, SuccessReceipt / ErrorModal
+│   │   ├── components/          # MatchList, DateFilter / OddsFilter, BetSlip, SuccessReceipt / ErrorModal
 │   │   └── pages/betting_page.py# page object composing the components
 │   └── utils/soft_assert.py     # collect multiple checks, report them together
 ├── tests/
 │   ├── conftest.py              # CLI options, settings, API client, account reset, test match
-│   ├── api/test_place_bet_stake_rules.py
+│   ├── api/test_place_bet_rules.py
 │   └── ui/
 │       ├── conftest.py          # driver lifecycle, page fixture, screenshot on failure
 │       └── test_bet_placement_journey.py
@@ -61,7 +61,9 @@ No Poetry or Allure, to keep setup to one `pip install`.
 - **Explicit waits only**, no `sleep`. Placement has its own longer timeout because the app shows an
   in-progress state.
 - **Failure diagnostics.** API calls are logged and shown on failure. UI failures save a screenshot to
-  `artifacts/screenshots/`. The E2E test reports *all* receipt and balance mismatches in one run.
+  `artifacts/screenshots/`.
+- **Hard vs soft assertions.** Hard asserts guard preconditions (the right bet is in the slip). Soft
+  assertions collect all outcome checks (slip totals, receipt, balances), so one run reports every mismatch.
 
 ## Setup
 
@@ -104,32 +106,36 @@ Lint: `pip install ruff && ruff check . && ruff format --check .`
 
 | Test | Type | Why it was chosen |
 |------|------|-------------------|
-| `tests/ui/test_bet_placement_journey.py::test_single_bet_receipt_and_balance_match_bet_slip` | E2E UI | Core revenue journey. Verifies the spec rule that the receipt matches the slip, and that the balance (header and backend) drops by exactly the stake. |
-| `tests/api/test_place_bet_stake_rules.py::test_place_bet_rejects_invalid_stake_without_charging` | API, 7 cases | The UI mask hides stake rule violations, so only the API can enforce them. Each case checks status, error code and an unchanged balance. |
+| `tests/ui/test_bet_placement_journey.py::test_betting_session_browse_filter_cancel_place_and_overspend` | E2E UI | One realistic session without reloads: only pre-match events are bettable, date and odds filters show exactly the matching events, Remove All charges nothing, the receipt matches the slip and the balance drops once, and a stake above the remaining balance is blocked. |
+| `tests/api/test_place_bet_rules.py::test_place_bet_rejects_invalid_bet_without_charging` | API, 9 cases | Money guards: stake limits, precision and type, stake above the balance, and a bet on a past match. The UI masks input and can hold a stale balance, so only the API can enforce them. Each case checks status, error code and an unchanged balance. |
 
 Each test module has a docstring with the full rationale. See also
 [docs/03_STRATEGY_AND_RECOMMENDATIONS.md](docs/03_STRATEGY_AND_RECOMMENDATIONS.md).
 
 ### Results on the current build (Version 1.0.0)
 
-Last run: 2026-11-14, macOS, Python 3.13, desktop Chrome. **2 failed, 6 passed in 27 s.**
+Last run: 2026-11-15, macOS, Python 3.13, desktop Chrome. **4 failed, 6 passed in 30 s.**
 
 The tests are written against the specification, so on the current build they **fail by design** and each
 failure maps to a reported defect:
 
 | Test | Result | Failing checks |
 |------|--------|----------------|
-| API stake rules | 6 passed, **1 failed** | `negative-BUG-01`: a stake of −5 is accepted with `200` instead of `422 invalid_stake_min` |
-| E2E bet placement | **failed** (soft assertions) | receipt match reversed (BUG-05), selection missing (BUG-06), receipt payout = stake × 2 (BUG-03), header balance not updated (BUG-04) |
+| API placement guards | 6 passed, **3 failed** | `negative-BUG-01`: a stake of −5 is accepted and credits the balance; `above-balance-BUG-02`: a stake above the balance is accepted and the balance goes negative; `past-match-BUG-07`: a bet on a past match is accepted |
+| E2E betting session | **failed** (soft assertions) | past matches bettable (BUG-07), counter ignores filters (BUG-15), receipt match reversed (BUG-05), selection missing (BUG-06), receipt payout = stake × 2 (BUG-03), header balance not updated (BUG-04), second stake above the real balance not blocked (BUG-02 via BUG-04) |
 
-Actual UI failure output (all bet slip checks passed; the 4 failures are app defects):
+Actual UI failure output (all preconditions and the Remove All stage passed; the 8 failures are app defects):
 
 ```
-AssertionError: 4 check(s) failed:
-  1. Receipt match (home team first): expected 'Marseille vs PSG', got 'PSG vs Marseille'
-  2. Receipt must show the selection 'Home'; got '... MATCH PSG vs Marseille STAKE €10.00 ODDS 4.10 ...'
-  3. Receipt potential payout (stake × odds): expected Decimal('41.00'), got Decimal('20.00')
-  4. Header balance after placement: expected Decimal('110.00'), got Decimal('120.00')
+AssertionError: 8 check(s) failed:
+  1. 91 PAST matches offer selectable odds, e.g. ['premier-league-manutd-chelsea', ...]   # BUG-07
+  2. 'Showing N matches' counter: expected 1, got 103                                     # BUG-15
+  3. Receipt match (home team first): expected 'Marseille vs PSG', got 'PSG vs Marseille' # BUG-05
+  4. Receipt must show the selection 'Home'; got '... MATCH PSG vs Marseille ...'         # BUG-06
+  5. Receipt potential payout (stake × odds): expected Decimal('410.00'), got Decimal('200.00')  # BUG-03
+  6. Header balance after placement: expected Decimal('20.00'), got Decimal('120.00')    # BUG-04
+  7. Slip warning for a €50.00 stake with €20.00 left: expected 'Insufficient balance', got ''   # BUG-02/04
+  8. Place Bet must be disabled for a €50.00 stake with €20.00 left                       # BUG-02/04
 ```
 
 When the bugs are fixed, the tests pass without changes.

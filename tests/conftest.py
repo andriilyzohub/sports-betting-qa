@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Iterator
+from datetime import date
 from decimal import Decimal
 
 import pytest
@@ -64,13 +65,18 @@ def api_client(settings: Settings) -> Iterator[BettingApiClient]:
 
 
 @pytest.fixture
-def starting_balance(api_client: BettingApiClient) -> Decimal:
-    """Put the account in a known state and return the *persisted* balance.
+def clean_account(api_client: BettingApiClient) -> None:
+    """Reset the shared test account so every test starts from the same state."""
+    api_client.reset_balance()
+
+
+@pytest.fixture
+def starting_balance(clean_account: None, api_client: BettingApiClient) -> Decimal:  # noqa: ARG001
+    """Reset the account and return the *persisted* balance.
 
     The reset response body is ignored on purpose: it doesn't match the stored value
     (BUG-10), and tests must compare against what the backend actually holds.
     """
-    api_client.reset_balance()
     return api_client.get_balance()
 
 
@@ -90,3 +96,12 @@ def upcoming_match(api_client: BettingApiClient) -> Match:
     if not candidates:
         pytest.skip("No upcoming match available in the catalogue")
     return candidates[0]
+
+
+@pytest.fixture(scope="session")
+def past_match(api_client: BettingApiClient) -> Match:
+    """A match whose kickoff date is before today. Betting on it must be impossible."""
+    past = [match for match in api_client.get_matches() if match.kickoff_date < date.today()]
+    if not past:
+        pytest.skip("No past match available in the catalogue")
+    return past[0]
