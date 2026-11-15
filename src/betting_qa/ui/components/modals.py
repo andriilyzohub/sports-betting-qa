@@ -7,7 +7,7 @@ from decimal import Decimal
 
 from selenium.webdriver.common.by import By
 
-from betting_qa.domain import parse_money
+from betting_qa.domain import parse_decimal
 from betting_qa.ui.base_view import BaseView, Locator
 
 
@@ -38,9 +38,9 @@ class SuccessReceipt(BaseView):
         return ReceiptDetails(
             bet_id=self.text_of(self.BET_ID),
             match=self.text_of(self.MATCH),
-            stake=parse_money(self.text_of(self.STAKE)),
-            odds=parse_money(self.text_of(self.ODDS)),
-            payout=parse_money(self.text_of(self.PAYOUT)),
+            stake=parse_decimal(self.text_of(self.STAKE)),
+            odds=parse_decimal(self.text_of(self.ODDS)),
+            payout=parse_decimal(self.text_of(self.PAYOUT)),
             placed_at=self.text_of(self.PLACED_AT),
             full_text=self.text_of(self.ROOT),
         )
@@ -51,10 +51,9 @@ class SuccessReceipt(BaseView):
 
 
 class ErrorModal(BaseView):
+    """Shown when placement fails; used to report the failure instead of a receipt mismatch."""
+
     ROOT: Locator = (By.ID, "modal-error")
-    MESSAGE: Locator = (By.ID, "modal-error-message")
-    REBET_BUTTON: Locator = (By.ID, "modal-error-rebet")
-    CLOSE_BUTTON: Locator = (By.ID, "modal-error-close")
 
     @property
     def message(self) -> str:

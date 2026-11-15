@@ -6,7 +6,7 @@ from decimal import Decimal
 
 from selenium.webdriver.common.by import By
 
-from betting_qa.domain import parse_money
+from betting_qa.domain import parse_decimal
 from betting_qa.ui.base_view import BaseView, Locator
 
 
@@ -37,15 +37,15 @@ class BetSlip(BaseView):
 
     @property
     def odds(self) -> Decimal:
-        return parse_money(self.text_of(self.SELECTION_ODDS))
+        return parse_decimal(self.text_of(self.SELECTION_ODDS))
 
     @property
     def total_stake(self) -> Decimal:
-        return parse_money(self.text_of(self.TOTAL_STAKE))
+        return parse_decimal(self.text_of(self.TOTAL_STAKE))
 
     @property
     def potential_payout(self) -> Decimal:
-        return parse_money(self.text_of(self.POTENTIAL_PAYOUT))
+        return parse_decimal(self.text_of(self.POTENTIAL_PAYOUT))
 
     @property
     def warning(self) -> str:
@@ -66,5 +66,7 @@ class BetSlip(BaseView):
     def submit(self) -> None:
         self.click(self.PLACE_BET_BUTTON)
 
-    def is_empty(self) -> bool:
-        return self.is_present(self.EMPTY_STATE)
+    def is_empty(self, timeout: float = 3.0) -> bool:
+        """True once the empty state is shown; waits briefly because the slip re-renders
+        after Remove All or closing the receipt."""
+        return self.poll_value(lambda: self.is_present(self.EMPTY_STATE), bool, timeout)

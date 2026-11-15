@@ -10,14 +10,10 @@ Usage::
     soft.equal(actual, expected, "what is compared")
     soft.check(condition, "message if it fails")
     soft.assert_all()  # required: without it, failures are never reported
-
-It also works as a context manager (``with SoftAssertions() as soft:``), which calls
-``assert_all()`` automatically on exit.
 """
 
 from __future__ import annotations
 
-from types import TracebackType
 from typing import Any
 
 
@@ -36,16 +32,3 @@ class SoftAssertions:
         if self._failures:
             details = "\n".join(f"  {i}. {failure}" for i, failure in enumerate(self._failures, 1))
             raise AssertionError(f"{len(self._failures)} check(s) failed:\n{details}")
-
-    def __enter__(self) -> SoftAssertions:
-        return self
-
-    def __exit__(
-        self,
-        exc_type: type[BaseException] | None,
-        exc: BaseException | None,
-        tb: TracebackType | None,
-    ) -> None:
-        # Don't mask an unexpected exception raised inside the block.
-        if exc_type is None:
-            self.assert_all()

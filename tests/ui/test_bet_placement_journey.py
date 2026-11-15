@@ -33,7 +33,7 @@ from decimal import Decimal
 import pytest
 
 from betting_qa.api import BettingApiClient
-from betting_qa.domain import MIN_STAKE, Match, Selection, expected_payout
+from betting_qa.domain import CENT, MIN_ODDS, MIN_STAKE, Match, Selection, expected_payout
 from betting_qa.ui.pages import BettingPage
 from betting_qa.utils import SoftAssertions
 
@@ -41,8 +41,6 @@ SELECTION = Selection.HOME
 FIRST_STAKE = Decimal("100.00")  # maximum stake: a boundary, and it leaves less than SECOND_STAKE
 SECOND_STAKE = Decimal("50.00")
 ODDS_WINDOW = Decimal("0.10")  # odds filter = [target odds - window, target odds]
-MIN_ODDS = Decimal("1.01")
-CENT = Decimal("0.01")
 
 
 def _lower_odds_bound(match: Match, upper: Decimal) -> Decimal:

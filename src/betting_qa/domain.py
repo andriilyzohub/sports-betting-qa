@@ -15,9 +15,9 @@ from typing import Any
 
 CENT = Decimal("0.01")
 MIN_STAKE = Decimal("1.00")
-MAX_STAKE = Decimal("100.00")
+MIN_ODDS = Decimal("1.01")
 
-_MONEY_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
+_DECIMAL_PATTERN = re.compile(r"-?\d+(?:\.\d+)?")
 
 
 class Selection(str, Enum):
@@ -83,9 +83,9 @@ def expected_payout(stake: Decimal, odds: Decimal) -> Decimal:
     return (stake * odds).quantize(CENT, rounding=ROUND_HALF_UP)
 
 
-def parse_money(text: str) -> Decimal:
-    """Extract the amount from UI text such as "Balance: €-30.00", "€27.50" or "Odds: 2.75"."""
-    match = _MONEY_PATTERN.search(text.replace(",", ""))
+def parse_decimal(text: str) -> Decimal:
+    """Extract the first number from UI text, e.g. "Balance: €-30.00", "€27.50", "Odds: 2.75"."""
+    match = _DECIMAL_PATTERN.search(text.replace(",", ""))
     if match is None:
         raise ValueError(f"No numeric amount found in {text!r}")
     return Decimal(match.group())

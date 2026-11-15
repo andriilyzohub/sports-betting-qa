@@ -63,12 +63,7 @@ class BettingApiClient:
             "selection": selection.value if isinstance(selection, Selection) else selection,
             "stake": stake,
         }
-        return self.place_bet_raw(json=payload)
-
-    def place_bet_raw(self, *, json: Any = None, data: str | None = None) -> requests.Response:
-        """Send an arbitrary body to the place-bet endpoint (protocol-level tests)."""
-        headers = {"Content-Type": "application/json"} if data is not None else None
-        return self._request("POST", "/api/place-bet", json=json, data=data, headers=headers)
+        return self._request("POST", "/api/place-bet", json=payload)
 
     def close(self) -> None:
         self._session.close()

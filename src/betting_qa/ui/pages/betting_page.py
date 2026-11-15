@@ -9,7 +9,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as ec
 
 from betting_qa.config import Settings
-from betting_qa.domain import parse_money
+from betting_qa.domain import parse_decimal
 from betting_qa.ui.base_view import BaseView, Locator
 from betting_qa.ui.components import (
     BetSlip,
@@ -50,7 +50,7 @@ class BettingPage(BaseView):
 
     @property
     def header_balance(self) -> Decimal:
-        return parse_money(self.text_of(self.HEADER_BALANCE))
+        return parse_decimal(self.text_of(self.HEADER_BALANCE))
 
     def wait_for_header_balance(self, expected: Decimal, timeout: float = 5.0) -> Decimal:
         """Give the UI a short grace period to refresh, then return what it shows."""
