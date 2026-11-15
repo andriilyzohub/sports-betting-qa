@@ -1,33 +1,43 @@
-name: tests
+name: ci
 
 on:
   push:
   pull_request:
   workflow_dispatch:
 
-# API and UI tests share one user account (one balance), so they run sequentially in one job.
-concurrency:
-  group: betting-qa-account
-  cancel-in-progress: false
-
 jobs:
-  test:
+  lint:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install ruff
+        run: pip install ruff
+      - name: Lint and format check
+        run: ruff check . && ruff format --check .
+
+  # Tests run on demand (Actions -> ci -> Run workflow), not on every push:
+  # they need the BETTING_USER_ID secret, share one live account, and fail by design
+  # on the current build because they detect real defects (see docs/02).
+  tests:
+    if: github.event_name == 'workflow_dispatch'
+    needs: lint
+    runs-on: ubuntu-latest
+    concurrency:
+      group: betting-qa-account  # one shared account: never run two test jobs at once
+      cancel-in-progress: false
     env:
       BETTING_USER_ID: ${{ secrets.BETTING_USER_ID }}
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
           cache: pip
-
       - name: Install dependencies
-        run: pip install -r requirements.txt ruff
-
-      - name: Lint
-        run: ruff check . && ruff format --check .
+        run: pip install -r requirements.txt
 
       - name: API tests
         run: pytest -m api --junitxml=artifacts/junit-api.xml

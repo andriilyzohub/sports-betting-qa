@@ -20,7 +20,9 @@ Additional tooling (all optional):
 
 - **Selenium Manager** (built into Selenium ≥ 4.6) downloads the matching chromedriver, so no manual driver setup.
 - **ruff** for linting and formatting, configured in `pyproject.toml`.
-- **GitHub Actions** workflow in `.github/workflows/tests.yml` as a CI starting point.
+- **GitHub Actions** (`.github/workflows/tests.yml`): lint on every push; tests on demand
+  (Actions → ci → Run workflow) with a `BETTING_USER_ID` repository secret. Tests aren't run on every
+  push because they share one live account and fail by design on the current build (real defects).
 
 No Poetry or Allure, to keep setup to one `pip install`.
 
@@ -52,7 +54,7 @@ No Poetry or Allure, to keep setup to one `pip install`.
 **Design choices**
 
 - **Layers.** Tests describe *what* is verified. Page objects and components know *how* to find things
-  (`id` locators only). The domain module holds business rules such as `expected_payout`. No locators or
+  (`id` locators where the app provides them; a few class or text locators where it doesn't). The domain module holds business rules such as `expected_payout`. No locators or
   URLs live in tests.
 - **Data from the system, not hard-coded.** The test match is picked from `GET /api/matches` (first
   upcoming match). The baseline balance is read from `GET /api/balance` after a reset.
